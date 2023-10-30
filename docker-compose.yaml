@@ -1,0 +1,62 @@
+version: "3.9"
+
+name: statistics_database
+services:
+
+  mongo_database_main_service:
+    platform: linux/amd64
+
+    image: mongo:latest
+
+    restart: always
+    container_name: mongo_db_server
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok | mongosh 0.0.0.0:21017/test --quiet'
+      interval: 15s
+      start_period: 5s
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=statisticsadmin
+      - MONGO_INITDB_ROOT_PASSWORD=statisticsadmin
+    volumes:
+      - database:/data/db
+      - database:/data/configdb
+    networks:
+      - container_network
+    ports:
+      - "27017:27017"
+
+  mongo_express_service:
+    platform: linux/amd64
+    image: mongo-express:latest
+    restart: always
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo_db_server
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+      - ME_CONFIG_MONGODB_AUTH_DATABASE=admin
+      - ME_CONFIG_MONGODB_AUTH_USERNAME=statisticsadmin
+      - ME_CONFIG_MONGODB_AUTH_PASSWORD=statisticsadmin
+      - ME_CONFIG_BASICAUTH_USERNAME=statisticsadmin
+      - ME_CONFIG_BASICAUTH_PASSWORD=statisticsadmin
+    depends_on:
+      mongo_database_main_service:
+        condition: service_healthy
+    container_name: admin-panel-mongo
+    volumes:
+      - database:/data/db
+    networks:
+      - container_network
+    ports:
+      - "8081:8081"
+
+
+networks:
+  container_network:
+    name: container_network
+    driver: bridge
+    external: true
+
+volumes:
+  database:
+    name: database
+    external: true
